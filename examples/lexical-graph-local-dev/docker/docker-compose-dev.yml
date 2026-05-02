@@ -1,3 +1,4 @@
+name: local-dev
 services:
   neo4j-local:
     image: neo4j:5.25-community
@@ -29,7 +30,7 @@ services:
     networks:
       - graphrag_local_network_dev
 
-  jupyter-local-dev:
+  jupyter-local:
     build:
       context: ./jupyter
       dockerfile: Dockerfile.dev
@@ -42,14 +43,13 @@ services:
       - ../notebooks:/home/jovyan/notebooks
       - ../../../lexical-graph:/home/jovyan/lexical-graph
       - ../../../lexical-graph-contrib:/home/jovyan/lexical-graph-contrib
-      - jupyter_local_data_dev:/home/jovyan/work
       - ~/.aws:/home/jovyan/.aws
     networks:
       - graphrag_local_network_dev
     depends_on:
       - pgvector-local
       - neo4j-local
-    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.disable_check_xsrf=True
 
 networks:
   graphrag_local_network_dev:
@@ -59,4 +59,3 @@ volumes:
   neo4j_local_data_dev:
   neo4j_local_logs_dev:
   pgvector_local_data_dev:
-  jupyter_local_data_dev:
