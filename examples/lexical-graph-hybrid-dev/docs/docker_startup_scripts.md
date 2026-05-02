@@ -15,7 +15,6 @@ Main startup script with comprehensive options:
 ```
 
 **Options:**
-- `--mac`: Use ARM/Apple Silicon optimized containers
 - `--dev`: Enable development mode with hot-code-injection
 - `--reset`: Reset all data and rebuild containers
 
@@ -24,30 +23,14 @@ Main startup script with comprehensive options:
 # Standard startup
 ./start-containers.sh
 
-# Apple Silicon Mac
-./start-containers.sh --mac
-
 # Development mode with hot-reload
-./start-containers.sh --dev --mac
+./start-containers.sh --dev
 
 # Reset everything and start fresh
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 ```
 
 ---
-
-## Windows Scripts
-
-### PowerShell (`start-containers.ps1`)
-
-```powershell
-.\start-containers.ps1 [OPTIONS]
-```
-
-**Options:**
-- `-Mac`: Use ARM/Apple Silicon containers
-- `-Dev`: Enable development mode
-- `-Reset`: Reset all data
 
 ---
 
@@ -64,7 +47,7 @@ Development mode enables hot-code-injection for active lexical-graph development
 ### Usage
 ```bash
 # Enable development mode
-./start-containers.sh --dev --mac
+./start-containers.sh --dev
 
 # Check if dev mode is active (in Jupyter)
 import os
@@ -90,6 +73,7 @@ VECTOR_STORE="postgresql://postgres:password@pgvector-hybrid:5432/graphrag"
 GRAPH_STORE="bolt://neo4j:password@neo4j-hybrid:7687"
 
 # AWS Configuration
+# AWS region for Bedrock and other services
 AWS_REGION=us-east-1
 # AWS_PROFILE=default  # Optional — uncomment to use a specific profile
 
@@ -124,14 +108,14 @@ POSTGRES_DB=graphrag
 
 ```bash
 # Full reset (removes all data)
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 
 # Docker cleanup (if scripts fail)
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 docker system prune -f
 
 # Restart fresh
-./start-containers.sh --mac
+./start-containers.sh
 ```
 
 ---
@@ -140,10 +124,10 @@ docker system prune -f
 
 After startup, services are available at:
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Jupyter Lab | http://localhost:8889 | None required |
-| Neo4j Browser | http://localhost:7475 | neo4j/password |
-| PostgreSQL | localhost:5433 | postgres/password |
+| Service | Standard URL | Dev URL | Credentials |
+|---------|-------------|---------|-------------|
+| Jupyter Lab | http://localhost:8889 | http://localhost:8890 | None required |
+| Neo4j Browser | http://localhost:7475 | http://localhost:7476 | neo4j/password |
+| PostgreSQL | localhost:5433 | localhost:5434 | postgres/password |
 
-All development happens in Jupyter Lab at http://localhost:8889.
+All development happens in Jupyter Lab at http://localhost:8889 (or http://localhost:8890 in dev mode).

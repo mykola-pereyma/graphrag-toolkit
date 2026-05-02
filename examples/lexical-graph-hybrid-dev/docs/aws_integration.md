@@ -212,8 +212,8 @@ from graphrag_toolkit.lexical_graph.prompts.prompt_provider_config import Bedroc
 prompt_provider = BedrockPromptProviderConfig(
     aws_region="us-east-1",
     aws_profile="your-profile",
-    system_prompt_arn="KEOXPXUM00",  # Your prompt ARN
-    user_prompt_arn="TSF4PI4A6C",
+    system_prompt_arn="your-system-prompt-id",  # Your prompt ARN or ID
+    user_prompt_arn="your-user-prompt-id",
     system_prompt_version="1",
     user_prompt_version="1"
 ).build()

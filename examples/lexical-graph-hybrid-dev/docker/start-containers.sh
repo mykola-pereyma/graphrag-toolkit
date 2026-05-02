@@ -6,10 +6,6 @@ RESET_MODE=false
 
 for arg in "$@"; do
     case $arg in
-        --mac)
-            COMPOSE_FILE="docker-compose.arm.yml"
-            echo "Using ARM/Mac-specific configuration"
-            ;;
         --dev)
             DEV_MODE=true
             echo "Enabling development mode with hot-code-injection"
@@ -64,7 +60,7 @@ if [ "$DEV_MODE" = true ]; then
 else
     echo "   Open http://localhost:8889 to access the development environment."
 fi
-echo "   Navigate to the 'work' folder to find the notebooks."
+echo "   Navigate to the 'notebooks' folder to find the notebooks."
 if [ "$DEV_MODE" = true ]; then
     echo ""
     echo "Development mode enabled - lexical-graph source code mounted for hot-code-injection"

@@ -13,15 +13,18 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 NOTEBOOKS_DIR="$PROJECT_DIR/notebooks"
 DOCKER_DIR="$PROJECT_DIR/docker"
 AWS_DIR="$PROJECT_DIR/aws"
-REPORT_DIR="${REPORT_DIR:-$PROJECT_DIR/test-reports}"
+REPORT_DIR="${REPORT_DIR:-$PROJECT_DIR/test-results}"
 
 # Configurable flags
 SKIP_CUDA="${SKIP_CUDA:-true}"
 SKIP_BATCH="${SKIP_BATCH:-true}"
 CLEANUP="${CLEANUP:-true}"
-DOCKER_MODE="${DOCKER_MODE:-standard}"
+DOCKER_MODE="standard"
 
 # State tracking for cleanup
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BATCH_ROLE_NAME="bedrock-batch-inference-role-${TIMESTAMP}"
+PROMPT_ROLE_NAME="bedrock-prompt-role-${TIMESTAMP}"
 AWS_ACCOUNT=""
 AWS_REGION=""
 S3_BUCKET=""
@@ -56,15 +59,15 @@ detect_platform() {
     local arch
     arch=$(uname -m)
     if [[ "$arch" == "arm64" || "$arch" == "aarch64" ]]; then
-        DOCKER_FLAGS="--mac"
-        ok "ARM platform detected (flags: --mac)"
+        ok "ARM platform detected"
     else
-        DOCKER_FLAGS=""
         ok "x86 platform detected"
     fi
-    if [[ "$DOCKER_MODE" == "dev" ]]; then
-        DOCKER_FLAGS="$DOCKER_FLAGS --dev"
-    fi
+    DOCKER_FLAGS="--reset"
+    JUPYTER_CONTAINER="jupyter-hybrid"
+    NEO4J_CONTAINER="neo4j-hybrid"
+    PGVECTOR_CONTAINER="pgvector-hybrid"
+    JUPYTER_WORK_DIR="/home/jovyan/notebooks"
 }
 
 # =============================================================================
@@ -103,12 +106,12 @@ setup_aws() {
     timer_start
 
     # S3, DynamoDB, IAM role for batch inference
-    (cd "$AWS_DIR" && bash setup-bedrock-batch.sh) || true
+    (cd "$AWS_DIR" && BATCH_ROLE_NAME="$BATCH_ROLE_NAME" bash setup-bedrock-batch.sh) || true
     AWS_RESOURCES_CREATED=true
 
     # Bedrock prompts (optional — don't fail if scripts missing)
     if [[ -f "$AWS_DIR/create_prompt_role.sh" && -f "$AWS_DIR/create_custom_prompt.sh" ]]; then
-        (cd "$AWS_DIR" && bash create_prompt_role.sh "$AWS_REGION") || true
+        (cd "$AWS_DIR" && bash create_prompt_role.sh --role-name "$PROMPT_ROLE_NAME") || true
 
         local sys_output usr_output
         sys_output=$(cd "$AWS_DIR" && bash create_custom_prompt.sh system_prompt.json "$AWS_REGION" 2>&1) || true
@@ -150,7 +153,7 @@ wait_for_containers() {
     local waited=0
     while [[ $waited -lt $max_wait ]]; do
         local count
-        count=$(docker ps --filter "name=neo4j-hybrid" --filter "name=pgvector-hybrid" --filter "name=jupyter-hybrid" --format "{{.Names}}" | wc -l | tr -d ' ')
+        count=$(docker ps --filter "name=$NEO4J_CONTAINER" --filter "name=$PGVECTOR_CONTAINER" --filter "name=$JUPYTER_CONTAINER" --format "{{.Names}}" | wc -l | tr -d ' ')
         if [[ "$count" -ge 3 ]]; then
             return 0
         fi
@@ -170,7 +173,7 @@ run_notebooks() {
     mkdir -p "$REPORT_DIR"
 
     # Copy runner script into container
-    docker cp "$SCRIPT_DIR/run_notebooks.py" jupyter-hybrid:/home/jovyan/work/run_notebooks.py
+    docker cp "$SCRIPT_DIR/run_notebooks.py" "$JUPYTER_CONTAINER":"$JUPYTER_WORK_DIR/run_notebooks.py"
 
     # Pass AWS credentials to container
     local aws_env_flags=""
@@ -182,15 +185,16 @@ run_notebooks() {
 
     # Execute
     # shellcheck disable=SC2086
-    docker exec $aws_env_flags jupyter-hybrid \
-        python3 /home/jovyan/work/run_notebooks.py \
+    docker exec $aws_env_flags "$JUPYTER_CONTAINER" \
+        python3 "$JUPYTER_WORK_DIR/run_notebooks.py" \
+        --work-dir="$JUPYTER_WORK_DIR" \
         --skip-cuda="$SKIP_CUDA" \
         --skip-batch="$SKIP_BATCH" \
     || NOTEBOOK_EXIT_CODE=$?
 
     # Collect reports
-    docker cp jupyter-hybrid:/home/jovyan/work/execution_report.json "$REPORT_DIR/" 2>/dev/null || true
-    docker cp jupyter-hybrid:/home/jovyan/work/execution_report.md "$REPORT_DIR/" 2>/dev/null || true
+    docker cp "$JUPYTER_CONTAINER":"$JUPYTER_WORK_DIR/execution_report.json" "$REPORT_DIR/" 2>/dev/null || true
+    docker cp "$JUPYTER_CONTAINER":"$JUPYTER_WORK_DIR/execution_report.md" "$REPORT_DIR/" 2>/dev/null || true
 
     if [[ $NOTEBOOK_EXIT_CODE -eq 0 ]]; then
         ok "All notebooks passed [$(timer_end)]"
@@ -211,7 +215,7 @@ cleanup() {
 
     # Docker
     if [[ "$DOCKER_STARTED" == "true" ]]; then
-        (cd "$DOCKER_DIR" && docker compose down -v 2>/dev/null) || true
+        (cd "$DOCKER_DIR" && docker compose -f docker-compose.yml down -v 2>/dev/null) || true
         ok "Docker containers removed"
     fi
 
@@ -227,9 +231,9 @@ cleanup() {
         ok "DynamoDB table deleted"
     fi
 
-    # IAM roles
+    # IAM roles (timestamped — only deletes roles created by this run)
     if [[ "$AWS_RESOURCES_CREATED" == "true" ]]; then
-        for role in bedrock-batch-inference-role bedrock-prompt-role; do
+        for role in "$BATCH_ROLE_NAME" "$PROMPT_ROLE_NAME"; do
             # Detach managed policies
             local policies
             policies=$(aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null) || true

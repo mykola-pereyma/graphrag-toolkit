@@ -1,3 +1,4 @@
+name: hybrid-dev
 services:
   neo4j-hybrid:
     image: neo4j:5.25-community
@@ -29,7 +30,7 @@ services:
     networks:
       - graphrag_hybrid_network_dev
 
-  jupyter-hybrid-dev:
+  jupyter-hybrid:
     build:
       context: ./jupyter
       dockerfile: Dockerfile.dev
@@ -42,14 +43,13 @@ services:
       - ../notebooks:/home/jovyan/notebooks
       - ../../../lexical-graph:/home/jovyan/lexical-graph-src
       - ../../../lexical-graph-contrib:/home/jovyan/lexical-graph-contrib
-      - jupyter_hybrid_data_dev:/home/jovyan/work
       - ~/.aws:/home/jovyan/.aws
     networks:
       - graphrag_hybrid_network_dev
     depends_on:
       - pgvector-hybrid
       - neo4j-hybrid
-    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.disable_check_xsrf=True
 
 networks:
   graphrag_hybrid_network_dev:
@@ -59,4 +59,3 @@ volumes:
   neo4j_hybrid_data_dev:
   neo4j_hybrid_logs_dev:
   pgvector_hybrid_data_dev:
-  jupyter_hybrid_data_dev:
