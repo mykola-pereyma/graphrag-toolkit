@@ -13,14 +13,14 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 NOTEBOOKS_DIR="$PROJECT_DIR/notebooks"
 DOCKER_DIR="$PROJECT_DIR/docker"
 AWS_DIR="$PROJECT_DIR/aws"
-REPORT_DIR="${REPORT_DIR:-$PROJECT_DIR/test-reports}"
+REPORT_DIR="${REPORT_DIR:-$PROJECT_DIR/test-results}"
 
 # Configurable flags
 SKIP_GITHUB="${SKIP_GITHUB:-true}"
 SKIP_PPTX="${SKIP_PPTX:-true}"
 SKIP_LONG_RUNNING="${SKIP_LONG_RUNNING:-true}"
 CLEANUP="${CLEANUP:-true}"
-DOCKER_MODE="${DOCKER_MODE:-standard}"
+DOCKER_MODE="standard"
 
 # State tracking for cleanup
 AWS_ACCOUNT=""
@@ -57,17 +57,11 @@ detect_platform() {
     local arch
     arch=$(uname -m)
     if [[ "$arch" == "arm64" || "$arch" == "aarch64" ]]; then
-        COMPOSE_FILE="docker-compose.arm.yml"
-        DOCKER_FLAGS="--mac"
-        ok "ARM platform detected (compose: $COMPOSE_FILE)"
+        ok "ARM platform detected"
     else
-        COMPOSE_FILE="docker-compose.yml"
-        DOCKER_FLAGS=""
-        ok "x86 platform detected (compose: $COMPOSE_FILE)"
+        ok "x86 platform detected"
     fi
-    if [[ "$DOCKER_MODE" == "dev" ]]; then
-        DOCKER_FLAGS="$DOCKER_FLAGS --dev"
-    fi
+    DOCKER_FLAGS="--reset"
 }
 
 # =============================================================================
@@ -161,6 +155,11 @@ start_docker() {
     log "Starting Docker containers ($DOCKER_MODE mode)..."
     timer_start
 
+    # Container names (standard mode)
+    JUPYTER_CONTAINER="jupyter-local"
+    NEO4J_CONTAINER="neo4j-local"
+    PGVECTOR_CONTAINER="pgvector-local"
+
     (cd "$DOCKER_DIR" && ./start-containers.sh $DOCKER_FLAGS)
     DOCKER_STARTED=true
 
@@ -173,10 +172,10 @@ wait_for_containers() {
     local waited=0
     while [[ $waited -lt $max_wait ]]; do
         local count
-        count=$(docker ps --filter "name=neo4j-local" --filter "name=pgvector-local" --filter "name=jupyter-local" --format "{{.Names}}" | wc -l | tr -d ' ')
+        count=$(docker ps --filter "name=$NEO4J_CONTAINER" --filter "name=$PGVECTOR_CONTAINER" --filter "name=$JUPYTER_CONTAINER" --format "{{.Names}}" | wc -l | tr -d ' ')
         if [[ "$count" -ge 3 ]]; then
             # Also verify jupyter is responsive
-            if docker exec jupyter-local python3 -c "print('ready')" 2>/dev/null; then
+            if docker exec "$JUPYTER_CONTAINER" python3 -c "print('ready')" 2>/dev/null; then
                 return 0
             fi
         fi
@@ -195,20 +194,22 @@ run_notebooks() {
     timer_start
     mkdir -p "$REPORT_DIR"
 
+    JUPYTER_WORK_DIR="/home/jovyan/notebooks"
+
     # Copy runner script into container
-    docker cp "$SCRIPT_DIR/run_notebooks.py" jupyter-local:/home/jovyan/work/run_notebooks.py
+    docker cp "$SCRIPT_DIR/run_notebooks.py" "$JUPYTER_CONTAINER:$JUPYTER_WORK_DIR/run_notebooks.py"
 
     # Execute
-    docker exec jupyter-local \
-        python3 /home/jovyan/work/run_notebooks.py \
+    docker exec "$JUPYTER_CONTAINER" \
+        python3 "$JUPYTER_WORK_DIR/run_notebooks.py" \
         --skip-github="$SKIP_GITHUB" \
         --skip-pptx="$SKIP_PPTX" \
         --skip-long-running="$SKIP_LONG_RUNNING" \
     || NOTEBOOK_EXIT_CODE=$?
 
     # Collect reports
-    docker cp jupyter-local:/home/jovyan/work/execution_report.json "$REPORT_DIR/" 2>/dev/null || true
-    docker cp jupyter-local:/home/jovyan/work/execution_report.md "$REPORT_DIR/" 2>/dev/null || true
+    docker cp "$JUPYTER_CONTAINER:$JUPYTER_WORK_DIR/execution_report.json" "$REPORT_DIR/" 2>/dev/null || true
+    docker cp "$JUPYTER_CONTAINER:$JUPYTER_WORK_DIR/execution_report.md" "$REPORT_DIR/" 2>/dev/null || true
 
     if [[ $NOTEBOOK_EXIT_CODE -eq 0 ]]; then
         ok "All notebooks passed [$(timer_end)]"
@@ -229,7 +230,7 @@ cleanup() {
 
     # Docker
     if [[ "$DOCKER_STARTED" == "true" ]]; then
-        (cd "$DOCKER_DIR" && docker compose -f "$COMPOSE_FILE" down -v 2>/dev/null) || true
+        (cd "$DOCKER_DIR" && docker compose -f "docker-compose.yml" down -v 2>/dev/null) || true
         ok "Docker containers removed"
     fi
 

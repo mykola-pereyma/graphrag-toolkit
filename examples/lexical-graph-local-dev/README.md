@@ -17,6 +17,8 @@ This example provides a complete local development environment for the GraphRAG 
 
 ## Quick Start
 
+> All commands below should be executed from the `lexical-graph-local-dev/` directory.
+
 ### 1. AWS Prerequisites
 
 Before starting, ensure you have:
@@ -28,38 +30,31 @@ Before starting, ensure you have:
 ### 2. Configure Environment
 
 ```bash
-cd notebooks
-cp .env.template .env
+cp notebooks/.env.template notebooks/.env
 ```
 
-Review `.env` — defaults work for local Docker services. Set `S3_BUCKET_NAME` if using S3 features (notebooks 03, 05).
+Review `notebooks/.env` — defaults work for local Docker services. Set `S3_BUCKET_NAME` if using S3 features (notebooks 03, 04, 05).
 
 ### 3. Start the Environment
 
-**Standard (x86/Intel):**
+**Standard:**
 ```bash
 cd docker
 ./start-containers.sh
 ```
 
-**Mac/ARM (Apple Silicon):**
-```bash
-cd docker
-./start-containers.sh --mac
-```
-
 **Development Mode (Hot-Code-Injection):**
 ```bash
 cd docker
-./start-containers.sh --dev --mac   # Enable live code editing
+./start-containers.sh --dev
 ```
 
 ### 4. Access Jupyter Lab
 
-Open your browser to: **http://localhost:8889**
+Open your browser to: **http://localhost:8889** (or **http://localhost:8890** for dev mode)
 
 - No password required
-- Navigate to the `work` folder to find notebooks
+- Navigate to the `notebooks` folder to find notebooks
 - All dependencies are pre-installed
 
 ### 5. Run the Setup Notebook
@@ -73,13 +68,11 @@ Start with `00-Setup.ipynb` to configure your environment and verify all service
 | Script | Platform | Description |
 |--------|----------|-------------|
 | `start-containers.sh` | Unix/Linux/Mac | Main startup script with all options |
-| `start-containers.ps1` | Windows PowerShell | PowerShell version with same functionality |
 
 ### Script Options
 
 | Flag | Description |
 |------|-------------|
-| `--mac` | Use ARM/Apple Silicon optimized containers |
 | `--dev` | Enable development mode with hot-code-injection |
 | `--reset` | Reset all data and rebuild containers |
 
@@ -89,35 +82,32 @@ Start with `00-Setup.ipynb` to configure your environment and verify all service
 # Standard startup
 ./start-containers.sh
 
-# Apple Silicon Mac
-./start-containers.sh --mac
-
 # Development mode with hot-reload
-./start-containers.sh --dev --mac
+./start-containers.sh --dev
 
 # Reset everything and start fresh
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 
-# Windows PowerShell
-.\start-containers.ps1 -Mac -Dev
+# Reset with dev mode
+./start-containers.sh --dev --reset
 ```
 
 ## Services
 
 After startup, the following services are available:
 
-| Service | URL | Credentials | Purpose |
-|---------|-----|-------------|---------|
-| **Jupyter Lab** | http://localhost:8889 | None required | Interactive development |
-| **Neo4j Browser** | http://localhost:7476 | neo4j/password | Graph database management |
-| **PostgreSQL** | localhost:5432 | postgres/password | Vector storage |
+| Service | Standard URL | Dev URL | Credentials | Purpose |
+|---------|-------------|---------|-------------|---------|
+| **Jupyter Lab** | http://localhost:8889 | http://localhost:8890 | None required | Interactive development |
+| **Neo4j Browser** | http://localhost:7476 | http://localhost:7477 | neo4j/password | Graph database management |
+| **PostgreSQL** | localhost:5432 | localhost:5434 | postgres/password | Vector storage |
 
 ## Development Mode
 
 Development mode enables hot-code-injection for active lexical-graph development:
 
 ```bash
-./start-containers.sh --dev --mac
+./start-containers.sh --dev
 ```
 
 **Features:**
@@ -141,7 +131,7 @@ Development mode enables hot-code-injection for active lexical-graph development
 
 **To reset all data:**
 ```bash
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 ```
 
 ## Database Configuration
@@ -202,7 +192,7 @@ docs = reader.read('s3://my-bucket/documents/file.pdf')
 
 ## Environment Variables
 
-Key environment variables (configured in `docker/.env`):
+Key environment variables (configured in `notebooks/.env`):
 
 ```bash
 # Database connections (Docker internal names)
@@ -218,6 +208,28 @@ EMBEDDINGS_MODEL="cohere.embed-english-v3"
 EXTRACTION_MODEL="us.anthropic.claude-sonnet-4-6"
 ```
 
+## Automated Testing
+
+Run all notebooks end-to-end with a single command:
+
+```bash
+bash tests/test-local-dev-notebooks.sh
+```
+
+This handles the full lifecycle: environment setup, Docker containers, notebook execution, reporting, and cleanup.
+
+Configuration options (environment variables):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SKIP_GITHUB` | `true` | Skip GitHub reader cells (requires token) |
+| `SKIP_PPTX` | `true` | Skip PPTX reader cells (slow, requires torch) |
+| `SKIP_LONG_RUNNING` | `true` | Skip JSON/Wikipedia extract_and_build cells |
+| `CLEANUP` | `true` | Clean up all resources after run |
+| `REPORT_DIR` | `test-results/` | Output directory for reports |
+
+Reports are generated in `test-results/` (execution_report.json + execution_report.md).
+
 ## Troubleshooting
 
 ### Common Issues
@@ -225,7 +237,7 @@ EXTRACTION_MODEL="us.anthropic.claude-sonnet-4-6"
 **Port conflicts:**
 - Jupyter: 8889 (not 8888)
 - Neo4j HTTP: 7476 (not 7474)
-- Neo4j Bolt: 7687
+- Neo4j Bolt: 7689 (not 7687)
 - PostgreSQL: 5432
 
 **Container networking:**
@@ -242,10 +254,10 @@ If you encounter persistent issues:
 
 ```bash
 # Stop and remove everything
-docker-compose down -v
+docker compose down -v
 
 # Start fresh
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 ```
 
 ## AWS Foundation Model Access (Optional)
@@ -277,7 +289,3 @@ If you have existing FalkorDB configurations:
    ```
 
 3. **Migrate data** if needed (contact support for migration tools)
-
----
-
-This local development environment provides everything needed to develop, test, and experiment with GraphRAG lexical-graph functionality without requiring AWS infrastructure.

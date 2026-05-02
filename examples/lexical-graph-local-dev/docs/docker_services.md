@@ -28,7 +28,7 @@ This document describes the services defined in the `docker-compose.yml` file us
 - **Environment Variables**:
   - `JUPYTER_ENABLE_LAB`: Enables Jupyter Lab interface
 - **Volumes**:
-  - `../notebooks:/home/jovyan/work`: Notebook files
+  - `../notebooks:/home/jovyan/notebooks`: Notebook files
   - `~/.aws:/home/jovyan/.aws`: AWS credentials
 - **Network**: Connected to `graphrag_local_network`
 - **Depends On**: `pgvector-local`, `neo4j-local`
@@ -59,7 +59,7 @@ The `docker-compose-dev.yml` provides a development variant with hot-code-inject
 | Jupyter port | 8889 | 8890 |
 | PostgreSQL port | 5432 | 5434 |
 | Jupyter Dockerfile | `jupyter/Dockerfile` (full) | `jupyter/Dockerfile.dev` (minimal) |
-| Notebook mount | `/home/jovyan/work` | `/home/jovyan/notebooks` |
+| Notebook mount | `/home/jovyan/notebooks` | `/home/jovyan/notebooks` |
 | Source mounts | None | lexical-graph, lexical-graph-contrib |
 
 Start dev mode with: `./start-containers.sh --dev`
@@ -107,8 +107,8 @@ All services use Docker volumes for data persistence. To reset all data:
 
 After startup, services are available at:
 
-| Service | URL | Credentials | Purpose |
-|---------|-----|-------------|---------|
-| **Jupyter Lab** | http://localhost:8889 | None required | Interactive development |
-| **Neo4j Browser** | http://localhost:7476 | neo4j/password | Graph database management |
-| **PostgreSQL** | localhost:5432 | postgres/password | Vector database |
+| Service | Standard URL | Dev URL | Credentials | Purpose |
+|---------|-------------|---------|-------------|---------|
+| **Jupyter Lab** | http://localhost:8889 | http://localhost:8890 | None required | Interactive development |
+| **Neo4j Browser** | http://localhost:7476 | http://localhost:7477 | neo4j/password | Graph database management |
+| **PostgreSQL** | localhost:5432 | localhost:5434 | postgres/password | Vector database |

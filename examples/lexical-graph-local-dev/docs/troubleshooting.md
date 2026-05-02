@@ -40,7 +40,7 @@ docker volume prune -f
 # Docker Desktop → Restart
 
 # Try again
-./start-containers.sh --mac
+./start-containers.sh
 ```
 
 ### Volume and Data Issues
@@ -56,15 +56,15 @@ Neo4j database empty after restart
 docker volume ls | grep neo4j
 
 # Ensure proper shutdown
-docker-compose down  # Don't use -v flag
+docker compose down  # Don't use -v flag
 
 # Restart normally
-./start-containers.sh --mac
+./start-containers.sh
 ```
 
 **Issue: Permission denied errors**
 ```
-Permission denied: '/home/jovyan/work'
+Permission denied: '/home/jovyan/notebooks'
 ```
 
 **Solution:**
@@ -73,7 +73,7 @@ Permission denied: '/home/jovyan/work'
 sudo chown -R $USER:$USER notebooks/
 
 # Rebuild containers
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 ```
 
 ---
@@ -95,7 +95,7 @@ print(dev_mode)  # False
 ls -la ../../../lexical-graph  # Should exist
 
 # Start with --dev flag
-./start-containers.sh --dev --mac
+./start-containers.sh --dev
 ```
 
 ### Hot-Reload Not Working
@@ -443,7 +443,7 @@ When all else fails, perform a complete reset:
 
 ```bash
 # 1. Stop everything
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 
 # 2. Clean up Docker
 docker system prune -f
@@ -458,7 +458,7 @@ rm -rf notebooks/extracted/
 rm -rf notebooks/output/
 
 # 5. Restart fresh
-./start-containers.sh --reset --mac
+./start-containers.sh --reset
 ```
 
 ### Selective Reset
@@ -472,7 +472,7 @@ docker rm neo4j-local pgvector-local
 docker volume rm neo4j_local_data pgvector_local_data
 
 # Restart databases
-docker-compose up -d neo4j-local pgvector-local
+docker compose up -d neo4j-local pgvector-local
 ```
 
 ---
@@ -491,7 +491,7 @@ docker logs jupyter-local > jupyter.log
 
 # System information
 docker version > system_info.txt
-docker-compose version >> system_info.txt
+docker compose version >> system_info.txt
 uname -a >> system_info.txt
 ```
 
