@@ -50,7 +50,7 @@ get_account_details
 
 APPLICATION_ID="graphrag-toolkit"
 BUCKET_NAME="graphrag-toolkit-${ACCOUNT_ID}"  # Using account ID to ensure uniqueness
-ROLE_NAME="bedrock-batch-inference-role"
+ROLE_NAME="${BATCH_ROLE_NAME:-bedrock-batch-inference-role}"
 POLICY_NAME="bedrock-batch-inference-policy"
 MODEL_ID="anthropic.claude-v2"  # Example model ID, adjust as needed
 TABLE_NAME="graphrag-toolkit-batch-table"
