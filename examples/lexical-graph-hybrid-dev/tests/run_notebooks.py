@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import sys
+from dotenv import load_dotenv
 import time
 
 import nbformat
@@ -25,20 +26,6 @@ ALL_NOTEBOOKS = [
 # (notebook_index, cell_index) -> reason
 CUDA_SKIPS = {(4, 22): "GPU/CUDA BGEReranker"}
 BATCH_SKIPS = {(1, 9): "Requires SOURCE_DIR with PDF files"}
-
-
-def load_env(env_path):
-    if not os.path.exists(env_path):
-        return
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                value = value.strip()
-                if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-                    value = value[1:-1]
-                os.environ[key.strip()] = value
 
 
 def extract_output(cell):
@@ -148,7 +135,7 @@ def main():
     parser.add_argument("--notebooks", nargs="*", help="Specific notebooks to run")
     args = parser.parse_args()
 
-    load_env(os.path.join(args.work_dir, ".env"))
+    load_dotenv(os.path.join(args.work_dir, ".env"))
 
     notebooks = args.notebooks or ALL_NOTEBOOKS
     skip_cells = {}
