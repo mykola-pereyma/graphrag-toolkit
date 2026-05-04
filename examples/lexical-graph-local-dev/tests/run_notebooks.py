@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+from dotenv import load_dotenv
 
 import nbformat
 from nbclient import NotebookClient
@@ -32,20 +33,6 @@ LONG_RUNNING_SKIPS = {
     (1, 22): "Wikipedia markdown header",
     (1, 23): "Wikipedia reader - extract_and_build timeout",
 }
-
-
-def load_env(env_path):
-    if not os.path.exists(env_path):
-        return
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                value = value.strip()
-                if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-                    value = value[1:-1]
-                os.environ[key.strip()] = value
 
 
 def extract_output(cell):
@@ -156,7 +143,7 @@ def main():
     parser.add_argument("--notebooks", nargs="*", help="Specific notebooks to run")
     args = parser.parse_args()
 
-    load_env(os.path.join(args.work_dir, ".env"))
+    load_dotenv(os.path.join(args.work_dir, ".env"))
 
     notebooks = args.notebooks or ALL_NOTEBOOKS
     skip_cells = {}
